@@ -201,6 +201,11 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         } else {}
     }
 
+
+    function getHeldNFT(address _addrOwner, address _addrOriginNftContract, uint256 _nftId) public view returns (bool) {
+        return heldNFT[_addrOwner][sisterContract[_addrOriginNftContract]][_nftId];
+    }
+
     //requestId => storageSlot;
     mapping(uint => bytes32) public storageSlotsBridgeRequest;
 
