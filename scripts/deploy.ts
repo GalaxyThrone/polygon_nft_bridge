@@ -3,6 +3,7 @@ const hre = require("hardhat");
 
 async function main() {
   // Deploy the openAccessNFTBridge contract
+  /*
   const OpenAccessNFTBridge = await hre.ethers.getContractFactory("openAccessNFTBridge");
   const openAccessNFTBridge = await OpenAccessNFTBridge.deploy(
     1
@@ -10,6 +11,7 @@ async function main() {
   );
   await openAccessNFTBridge.deployed();
   console.log("openAccessNFTBridge deployed to:", openAccessNFTBridge.address);
+  */
 }
 
 // Run the deploy script
