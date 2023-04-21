@@ -19,7 +19,7 @@ interface IPolygonBridgeContract {
 
     function claimMessage(
         //@notice for testing reduced size
-        bytes32[2] calldata smtProof,
+        bytes32[32] calldata smtProof,
         uint32 index,
         bytes32 mainnetExitRoot,
         bytes32 rollupExitRoot,
@@ -65,9 +65,9 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
     address public ethereumGoerliBridgeContract =
         address(0x11013a48Ad87a528D23CdA25D2C34D7dbDA6b46b); // MessageService GoerliEth
 
-    uint public goerliChainId = 5; //ChainID Sepolia
+    uint32 public goerliChainId = 5; //ChainID Sepolia
 
-    uint public polygonChainIdZK = 1442; //ChainID polygon zkEVM  Testnet
+    uint32 public polygonChainIdZK = 1442; //ChainID polygon zkEVM  Testnet
 
     uint public currentChainType = 0; // 1 for L1, 2 for L2
 
@@ -78,9 +78,9 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
 
     bool sisterBridgeSetup = false;
 
-    uint public currentChainId;
+    uint32 public currentChainId;
 
-    uint public currentSisterChainId;
+    uint32 public currentSisterChainId;
 
     event bridgeRequestSent(
         address owner,
@@ -137,48 +137,27 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
 
     // Returns true or false if message received, the original NFT Contract address from the other chain, the owner of the NFT, and the tokenId
     function claimBridged(
-        uint256 srcChainId,
-        address _origin,
-        bytes32 _dataPayload,
-        bytes calldata proof
-    ) external returns (bool, address, address, uint) {
-        polygonBridge = IPolygonBridgeContract(currentBridgeSignalContract);
+        bytes32  _dataPayload,
+        bytes32[32] calldata _smtProof,
+        uint32 index,
+        bytes32 mainnetExitRoot,
+        bytes32 rollupExitRoot
+    ) external {
+
 
         //exampleData
 
-        bytes32[2] memory smtProof = [
-            bytes32(
-                0x048a645062893f9153da1ffefbf9edbfdd373fecf764fbe41e77a50d00000001
-            ),
-            bytes32(
-                0x048a645062893f9153da1ffefbf9edbfdd373fecf764fbe41e77a50d00000001
-            )
-        ];
-        uint32 index = 42; // the index of the Merkle proof to use
-        bytes32 mainnetExitRoot = bytes32(
-            0x049a645062893f9153da1ffefbf9edbfdd373fecf764fbe41e77a50d00000001
-        ); // a 32-byte value representing the Merkle root of the mainnet exit tree
-        bytes32 rollupExitRoot = bytes32(
-            0x048a645062893f9153da1ffefbf9edbfdd373fecf764fbe41e77a50d00000001
-        ); // a 32-byte value representing the Merkle root of the rollup exit tree
-        uint32 originNetwork = 1; // a number representing the network ID of the origin chain
-        address originAddress = address(0x123456789abcdef); // an Ethereum address representing the user's address on the origin chain
-        uint32 destinationNetwork = 2; // a number representing the network ID of the destination chain
-        address destinationAddress = address(0x987654321fedcba); // an Ethereum address representing the user's address on the destination chain
-        uint256 amount = 1000000000000000000; // an integer representing the amount of tokens to transfer, in wei (1 ETH)
-        string memory metadataString = "Hello world!";
-        bytes memory metadataBytes = bytes(metadataString);
         polygonBridge.claimMessage(
-            smtProof,
+            _smtProof,
             index,
             mainnetExitRoot,
             rollupExitRoot,
-            originNetwork,
-            originAddress,
-            destinationNetwork,
-            destinationAddress,
-            amount,
-            metadataBytes
+            currentSisterChainId,
+            currentSisterContract,
+            2,          // Destination network
+            address(this),
+            0,
+           abi.encodePacked(_dataPayload)
         );
 
         (
@@ -188,31 +167,34 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         ) = decodeMessagePayload(_dataPayload);
 
         // If we hold the NFT from a previous bridging, we return it to the owner here.
-        bool response = false;
         if (
             heldNFT[_addrOwner][sisterContract[_addrOriginNftContract]][_nftId]
         ) {
-            address sisterContractAddress = sisterContract[
-                _addrOriginNftContract
-            ];
+           
 
             require(
-                sisterContractAddress != address(0),
+                sisterContract[
+                _addrOriginNftContract
+            ] != address(0),
                 "no sister contract specified!"
             );
 
-            IERC721 sisterNftContract = IERC721(sisterContractAddress);
+            IERC721 sisterNftContract = IERC721(sisterContract[
+                _addrOriginNftContract
+            ]);
 
             sisterNftContract.safeTransferFrom(
-                sisterContractAddress,
+                sisterContract[
+                _addrOriginNftContract
+            ],
                 _addrOwner,
                 _nftId
             );
 
-            return (response, address(0), address(0), 0);
+            
         }
-        response = true;
-        return (response, _addrOriginNftContract, _addrOwner, _nftId);
+   
+        
     }
 
     //requestId => storageSlot;
@@ -225,13 +207,18 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
     mapping(uint => bytes32) public sentPayload;
     uint public totalRequestsSent;
 
+
+    //sending the message to the bridge with encoded data payload.
     function sendMessageToL2(
         address _to,
         bytes memory _calldata
-    ) public payable {
+    ) internal  {
         IPolygonBridgeContract bridge = IPolygonBridgeContract(
             0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7
         );
+
+
+        
         uint32 destinationNetwork = 1;
         bool forceUpdateGlobalExitRoot = true;
         bridge.bridgeMessage{value: msg.value}(
@@ -263,16 +250,28 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         bridgeRequestInitiatorUser[totalRequestsSent] = from;
         bridgeRequestInitiatorSender[totalRequestsSent] = msg.sender;
 
+
+        emit bridgeData(msg.sender, encodedData);
+
+
+
+
+
         totalRequestsSent++;
         heldNFT[from][nftContractAddr][tokenId] = true;
 
         emit bridgeRequestSent(from, msg.sender, tokenId);
 
+   
+        sendMessageToL2(currentSisterContract, abi.encodePacked(encodedData));
+
         return this.onERC721Received.selector;
+
+        
     }
 
     function pingBridgeForTransfer(bytes32 _dataPayload) internal {
-        emit bridgeData(msg.sender, _dataPayload);
+        
         polygonBridge = IPolygonBridgeContract(currentBridgeSignalContract);
     }
 
