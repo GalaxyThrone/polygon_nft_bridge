@@ -56,7 +56,10 @@ contract GalaxyBridge is ERC721URIStorage, Ownable, IBridgeMessageReceiver {
             "only callable via cross chain messaging, public API  @galaxyBridge "
         );
 
-        require(originAddress == bridgeContractGalaxyBridge, "message is not from the galaxyBridge!");
+        require(
+            originAddress == bridgeContractGalaxyBridge,
+            "message is not from the galaxyBridge!"
+        );
 
         (
             address _addrOwner,
@@ -64,11 +67,12 @@ contract GalaxyBridge is ERC721URIStorage, Ownable, IBridgeMessageReceiver {
             uint256 _nftId
         ) = decodeMessagePayload(castBytesToBytes32(data));
 
-        require(_addrOriginNftContract == sisterContract, "message is not from the sisterContract!");
+        require(
+            _addrOriginNftContract == sisterContract,
+            "message is not from the sisterContract!"
+        );
 
         //@notice this is where the custom logic has to be implemented
-
-        
     }
 
     // Decode data payload from bytes32 for cross-chain messaging
@@ -85,8 +89,9 @@ contract GalaxyBridge is ERC721URIStorage, Ownable, IBridgeMessageReceiver {
         return (_addrOwner, _addrOriginNftContract, _nftId);
     }
 
-
-    function castBytesToBytes32(bytes memory input) public pure returns (bytes32 output) {
+    function castBytesToBytes32(
+        bytes memory input
+    ) public pure returns (bytes32 output) {
         require(input.length == 32, "Input length must be 32 bytes");
         assembly {
             output := mload(add(input, 32))

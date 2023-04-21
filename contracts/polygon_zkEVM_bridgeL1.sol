@@ -141,11 +141,11 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         currentSisterContract = _SisterContractInit;
     }
 
-    //@notice this is for claiming previously bridged over NFTS back.   
+    //@notice this is for claiming previously bridged over NFTS back.
     //@notice this is for claiming already minted NFTS that have been held by the bridge until this point.
     //@notice For the other case ( wrappedNFT or custom Mint of the NFT after the bridging), see onMessageReceived.
-    //@notice example NFT Contract implementation is also in the repo. 
-    
+    //@notice example NFT Contract implementation is also in the repo.
+
     function claimBridged(
         bytes32 _dataPayload,
         bytes32[32] calldata _smtProof,
@@ -173,44 +173,34 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
             uint256 _nftId
         ) = decodeMessagePayload(_dataPayload);
 
-         processNftTransfer(
-            _addrOwner,
-            _addrOriginNftContract,
-            _nftId
-        );
+        processNftTransfer(_addrOwner, _addrOriginNftContract, _nftId);
     }
 
     function processNftTransfer(
         address _addrOwner,
         address _addrOriginNftContract,
         uint256 _nftId
-    ) internal  {
+    ) internal {
         if (
             heldNFT[_addrOwner][sisterContract[_addrOriginNftContract]][_nftId]
         ) {
             require(
-                sisterContract[
-                _addrOriginNftContract
-            ] != address(0),
+                sisterContract[_addrOriginNftContract] != address(0),
                 "no sister contract specified!"
             );
 
-            IERC721(sisterContract[
-                _addrOriginNftContract
-            ]).safeTransferFrom(
-                sisterContract[
-                _addrOriginNftContract
-            ],
+            IERC721(sisterContract[_addrOriginNftContract]).safeTransferFrom(
+                sisterContract[_addrOriginNftContract],
                 _addrOwner,
                 _nftId
             );
 
-            delete heldNFT[_addrOwner][sisterContract[_addrOriginNftContract]][_nftId];
-
-        } else {
-           
-        }
+            delete heldNFT[_addrOwner][sisterContract[_addrOriginNftContract]][
+                _nftId
+            ];
+        } else {}
     }
+
     //requestId => storageSlot;
     mapping(uint => bytes32) public storageSlotsBridgeRequest;
 
@@ -221,18 +211,12 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
     mapping(uint => bytes32) public sentPayload;
     uint public totalRequestsSent;
 
-
     //sending the message to the bridge with encoded data payload.
-    function sendMessageToL2(
-        address _to,
-        bytes memory _calldata
-    ) internal  {
+    function sendMessageToL2(address _to, bytes memory _calldata) internal {
         IPolygonBridgeContract bridge = IPolygonBridgeContract(
             0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7
         );
 
-
-        
         uint32 destinationNetwork = 1;
         bool forceUpdateGlobalExitRoot = true;
         bridge.bridgeMessage{value: msg.value}(
@@ -264,26 +248,17 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         bridgeRequestInitiatorUser[totalRequestsSent] = from;
         bridgeRequestInitiatorSender[totalRequestsSent] = msg.sender;
 
-
         emit bridgeData(msg.sender, encodedData);
-
-
-
-
 
         totalRequestsSent++;
         heldNFT[from][nftContractAddr][tokenId] = true;
 
         emit bridgeRequestSent(from, msg.sender, tokenId);
 
-   
         sendMessageToL2(currentSisterContract, abi.encodePacked(encodedData));
 
         return this.onERC721Received.selector;
-
-        
     }
-
 
     // Encode data payload to bytes32 for cross-chain messaging
     function encodeMessagePayload(
