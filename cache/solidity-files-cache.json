@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/ender/test/polygon_nft_bridge/contracts/polygon_zkEVM_bridgeL1.sol": {
-      "lastModificationDate": 1682095985440,
-      "contentHash": "ea6c7a2f9ce0be745b643d3a2af9ce03",
+      "lastModificationDate": 1682098902021,
+      "contentHash": "0060fb0d7fdfdcb41a4995b05706d919",
       "sourceName": "contracts/polygon_zkEVM_bridgeL1.sol",
       "solcConfig": {
         "version": "0.8.9",
@@ -517,6 +517,47 @@
       ],
       "artifacts": [
         "IERC165"
+      ]
+    },
+    "/Users/ender/test/polygon_nft_bridge/contracts/zkEVM_NFT_contract_example.sol": {
+      "lastModificationDate": 1682100742273,
+      "contentHash": "e43877e72e1fd7413b0fd42d1f8bdb1f",
+      "sourceName": "contracts/zkEVM_NFT_contract_example.sol",
+      "solcConfig": {
+        "version": "0.8.9",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/token/ERC721/ERC721.sol",
+        "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol",
+        "@openzeppelin/contracts/access/Ownable.sol",
+        "@openzeppelin/contracts/utils/Counters.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.9"
+      ],
+      "artifacts": [
+        "GalaxyBridge",
+        "IBridgeMessageReceiver"
       ]
     }
   }

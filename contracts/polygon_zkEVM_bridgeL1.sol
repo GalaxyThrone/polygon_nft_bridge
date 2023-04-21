@@ -88,6 +88,12 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         uint indexed nftId
     );
 
+    event bridgeSucess(
+        address owner,
+        address indexednftContract,
+        uint indexed nftId
+    );
+
     // Constructor function for the contract
     constructor(uint _chainType) {
         currentChainType = _chainType;
@@ -135,18 +141,19 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         currentSisterContract = _SisterContractInit;
     }
 
-    // Returns true or false if message received, the original NFT Contract address from the other chain, the owner of the NFT, and the tokenId
+    //@notice this is for claiming previously bridged over NFTS back.   
+    //@notice this is for claiming already minted NFTS that have been held by the bridge until this point.
+    //@notice For the other case ( wrappedNFT or custom Mint of the NFT after the bridging), see onMessageReceived.
+    //@notice example NFT Contract implementation is also in the repo. 
+    
     function claimBridged(
-        bytes32  _dataPayload,
+        bytes32 _dataPayload,
         bytes32[32] calldata _smtProof,
         uint32 index,
         bytes32 mainnetExitRoot,
         bytes32 rollupExitRoot
     ) external {
-
-
         //exampleData
-
         polygonBridge.claimMessage(
             _smtProof,
             index,
@@ -154,10 +161,10 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
             rollupExitRoot,
             currentSisterChainId,
             currentSisterContract,
-            2,          // Destination network
+            2, // Destination network
             address(this),
             0,
-           abi.encodePacked(_dataPayload)
+            abi.encodePacked(_dataPayload)
         );
 
         (
@@ -166,12 +173,21 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
             uint256 _nftId
         ) = decodeMessagePayload(_dataPayload);
 
-        // If we hold the NFT from a previous bridging, we return it to the owner here.
+         processNftTransfer(
+            _addrOwner,
+            _addrOriginNftContract,
+            _nftId
+        );
+    }
+
+    function processNftTransfer(
+        address _addrOwner,
+        address _addrOriginNftContract,
+        uint256 _nftId
+    ) internal  {
         if (
             heldNFT[_addrOwner][sisterContract[_addrOriginNftContract]][_nftId]
         ) {
-           
-
             require(
                 sisterContract[
                 _addrOriginNftContract
@@ -179,11 +195,9 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
                 "no sister contract specified!"
             );
 
-            IERC721 sisterNftContract = IERC721(sisterContract[
+            IERC721(sisterContract[
                 _addrOriginNftContract
-            ]);
-
-            sisterNftContract.safeTransferFrom(
+            ]).safeTransferFrom(
                 sisterContract[
                 _addrOriginNftContract
             ],
@@ -191,12 +205,12 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
                 _nftId
             );
 
-            
-        }
-   
-        
-    }
+            delete heldNFT[_addrOwner][sisterContract[_addrOriginNftContract]][_nftId];
 
+        } else {
+           
+        }
+    }
     //requestId => storageSlot;
     mapping(uint => bytes32) public storageSlotsBridgeRequest;
 
@@ -270,10 +284,6 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         
     }
 
-    function pingBridgeForTransfer(bytes32 _dataPayload) internal {
-        
-        polygonBridge = IPolygonBridgeContract(currentBridgeSignalContract);
-    }
 
     // Encode data payload to bytes32 for cross-chain messaging
     function encodeMessagePayload(
