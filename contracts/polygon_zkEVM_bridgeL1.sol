@@ -201,9 +201,13 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         } else {}
     }
 
-
-    function getHeldNFT(address _addrOwner, address _addrOriginNftContract, uint256 _nftId) public view returns (bool) {
-        return heldNFT[_addrOwner][sisterContract[_addrOriginNftContract]][_nftId];
+    function getHeldNFT(
+        address _addrOwner,
+        address _addrOriginNftContract,
+        uint256 _nftId
+    ) public view returns (bool) {
+        return
+            heldNFT[_addrOwner][sisterContract[_addrOriginNftContract]][_nftId];
     }
 
     //requestId => storageSlot;
@@ -235,6 +239,8 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
     event bridgeData(address indexed sender, bytes32 indexed dataPayload);
 
     // Bridge NFT to sister chain
+    // @notice requires safeTransfer, normal transfer does not trigger onERC721 received
+    //
     function onERC721Received(
         address operator,
         address from,
