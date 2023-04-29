@@ -69,7 +69,7 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
 
     uint32 public polygonChainIdZK = 1442; //ChainID polygon zkEVM  Testnet
 
-    uint public currentChainType = 0; // 1 for L1, 2 for L2
+    uint public currentChainType = 1; // 1 for L1, 2 for L2
 
     address public currentBridgeSignalContract;
 
@@ -176,6 +176,22 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         processNftTransfer(_addrOwner, _addrOriginNftContract, _nftId);
     }
 
+    function onMessageReceived(
+        address originAddress,
+        uint32 originNetwork,
+        bytes memory data
+    ) external payable {
+        require(originAddress == currentSisterContract);
+
+        //@TODO more checks
+        address caller = originAddress;
+        (bool success, ) = address(this).call(data);
+        if (!success) {
+            revert("metadata execution failed");
+        }
+        caller = address(0);
+    }
+
     function processNftTransfer(
         address _addrOwner,
         address _addrOriginNftContract,
@@ -223,10 +239,10 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
     //sending the message to the bridge with encoded data payload.
     function sendMessageToL2(address _to, bytes memory _calldata) internal {
         IPolygonBridgeContract bridge = IPolygonBridgeContract(
-            0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7
+            polygonzkEVMBridgeContractL1
         );
 
-        uint32 destinationNetwork = 1;
+        uint32 destinationNetwork = uint32(currentChainType);
         bool forceUpdateGlobalExitRoot = true;
         bridge.bridgeMessage{value: msg.value}(
             destinationNetwork,
@@ -237,6 +253,10 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
     }
 
     event bridgeData(address indexed sender, bytes32 indexed dataPayload);
+
+    function testMessaging(address _to, bytes memory _calldata) external {
+        sendMessageToL2(_to, _calldata);
+    }
 
     // Bridge NFT to sister chain
     // @notice requires safeTransfer, normal transfer does not trigger onERC721 received
