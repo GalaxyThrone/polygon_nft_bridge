@@ -32,6 +32,10 @@ interface IPolygonBridgeContract {
     ) external;
 }
 
+interface ICrossChainNFTContract {
+    function onBridgedNFTReceived(uint _nftId, address _newOwner) external;
+}
+
 // Abstract contract, add appropriate functionality later
 abstract contract WrappedNFT {
     function claimBridged(
@@ -61,9 +65,6 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
 
     address public polygonzkEVMBridgeContractL2 =
         address(0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7); // MessageService PolygonzkEVM
-
-    address public ethereumGoerliBridgeContract =
-        address(0x11013a48Ad87a528D23CdA25D2C34D7dbDA6b46b); // MessageService GoerliEth
 
     uint32 public goerliChainId = 5; //ChainID Sepolia
 
@@ -114,7 +115,8 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
     }
 
     // Mapping to store NFTs being held
-    mapping(address => mapping(address => mapping(uint => bool))) heldNFT;
+    // contract => nftId => status
+    mapping(address => mapping(uint => bool)) heldNFT;
 
     mapping(address => address) public sisterContract;
 
@@ -135,7 +137,7 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
     function addSisterBridgeContract(
         address _SisterContractInit
     ) external onlyOwner {
-        //sister bridge contract can only be set up once
+        //sister bridge contract can only be set up once, otherwise reverts
         require(!sisterBridgeSetup, "A contract is a contract is a contract!");
         sisterBridgeSetup = true;
         currentSisterContract = _SisterContractInit;
@@ -154,6 +156,10 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         bytes32 rollupExitRoot
     ) external {
         //exampleData
+
+        //@notice we could do it via the encoded bytes call instead for less gasUsage / cleaner code I guess? Does increase complexity
+
+        //@notice the bridge does call onMessageReceived to communicate with the receiver contract. reverts if it doesnt meet the expectations.
         polygonBridge.claimMessage(
             _smtProof,
             index,
@@ -182,14 +188,16 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         bytes memory data
     ) external payable {
         require(originAddress == currentSisterContract);
+        require(msg.sender == polygonzkEVMBridgeContractL1);
 
-        //@TODO more checks
+        /*
         address caller = originAddress;
+        caller = address(0);
         (bool success, ) = address(this).call(data);
         if (!success) {
             revert("metadata execution failed");
         }
-        caller = address(0);
+        */
     }
 
     function processNftTransfer(
@@ -197,33 +205,36 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         address _addrOriginNftContract,
         uint256 _nftId
     ) internal {
-        if (
-            heldNFT[_addrOwner][sisterContract[_addrOriginNftContract]][_nftId]
-        ) {
-            require(
-                sisterContract[_addrOriginNftContract] != address(0),
-                "no sister contract specified!"
-            );
-
+        if (heldNFT[_addrOriginNftContract][_nftId]) {
             IERC721(sisterContract[_addrOriginNftContract]).safeTransferFrom(
                 sisterContract[_addrOriginNftContract],
                 _addrOwner,
                 _nftId
             );
 
-            delete heldNFT[_addrOwner][sisterContract[_addrOriginNftContract]][
-                _nftId
-            ];
-        } else {}
+            delete heldNFT[_addrOriginNftContract][_nftId];
+        } else {
+            //@TODO message NFT Contract to mint new one via interface.
+            //if no sisterContract is specified, we can either deploy wrappedContracts or revert it.
+
+            require(
+                sisterContract[_addrOriginNftContract] != address(0),
+                "no sister contract specified!"
+            );
+
+            ICrossChainNFTContract sisterContract = ICrossChainNFTContract(
+                sisterContract[_addrOriginNftContract]
+            );
+
+            sisterContract.onBridgedNFTReceived(_nftId, _addrOwner);
+        }
     }
 
     function getHeldNFT(
-        address _addrOwner,
         address _addrOriginNftContract,
         uint256 _nftId
     ) public view returns (bool) {
-        return
-            heldNFT[_addrOwner][sisterContract[_addrOriginNftContract]][_nftId];
+        return heldNFT[_addrOriginNftContract][_nftId];
     }
 
     //requestId => storageSlot;
@@ -282,7 +293,7 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         emit bridgeData(msg.sender, encodedData);
 
         totalRequestsSent++;
-        heldNFT[from][nftContractAddr][tokenId] = true;
+        heldNFT[nftContractAddr][tokenId] = true;
 
         emit bridgeRequestSent(from, msg.sender, tokenId);
 
