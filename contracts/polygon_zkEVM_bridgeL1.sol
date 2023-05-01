@@ -89,7 +89,13 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         uint indexed nftId
     );
 
-    event bridgeSuccess(
+    event bridgeSuccessHeld(
+        address newOwner,
+        address indexednftContract,
+        uint indexed nftId
+    );
+
+    event bridgeSuccessSister(
         address newOwner,
         address indexednftContract,
         uint indexed nftId
@@ -120,9 +126,9 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
 
     mapping(address => address) public sisterContract;
 
-    // Add a new sister contract
+    // Add a new sister contract, requires msg.sender to be the nft contract
     function addSisterContract(address _newSisterContract) external {
-        sisterContract[msg.sender] = _newSisterContract;
+        sisterContract[_newSisterContract] = msg.sender;
     }
 
     // Add a sister contract via signature
@@ -205,28 +211,32 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         address _addrOriginNftContract,
         uint256 _nftId
     ) internal {
+        //if no sisterContract is specified, we can either deploy wrappedContracts or revert it. currently we just revert.
+        require(
+            sisterContract[_addrOriginNftContract] != address(0),
+            "no sister contract specified!"
+        );
+
         if (heldNFT[_addrOriginNftContract][_nftId]) {
             IERC721(sisterContract[_addrOriginNftContract]).safeTransferFrom(
                 address(this),
                 _addrOwner,
                 _nftId
             );
-            emit bridgeSuccess(_addrOwner, _addrOriginNftContract, _nftId);
+            emit bridgeSuccessHeld(_addrOwner, _addrOriginNftContract, _nftId);
             delete heldNFT[_addrOriginNftContract][_nftId];
         } else {
             //@TODO message NFT Contract to mint new one via interface.
-            //if no sisterContract is specified, we can either deploy wrappedContracts or revert it.
-
-            require(
-                sisterContract[_addrOriginNftContract] != address(0),
-                "no sister contract specified!"
-            );
 
             ICrossChainNFTContract sisterContract = ICrossChainNFTContract(
                 sisterContract[_addrOriginNftContract]
             );
 
-            emit bridgeSuccess(_addrOwner, _addrOriginNftContract, _nftId);
+            emit bridgeSuccessSister(
+                _addrOwner,
+                _addrOriginNftContract,
+                _nftId
+            );
             //@notice sister contract has to implement this func
             sisterContract.onBridgedNFTReceived(_nftId, _addrOwner);
         }
