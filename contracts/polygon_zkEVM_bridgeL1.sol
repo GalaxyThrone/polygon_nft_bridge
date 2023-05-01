@@ -89,8 +89,8 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         uint indexed nftId
     );
 
-    event bridgeSucess(
-        address owner,
+    event bridgeSuccess(
+        address newOwner,
         address indexednftContract,
         uint indexed nftId
     );
@@ -207,11 +207,11 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
     ) internal {
         if (heldNFT[_addrOriginNftContract][_nftId]) {
             IERC721(sisterContract[_addrOriginNftContract]).safeTransferFrom(
-                sisterContract[_addrOriginNftContract],
+                address(this),
                 _addrOwner,
                 _nftId
             );
-
+            emit bridgeSuccess(_addrOwner, _addrOriginNftContract, _nftId);
             delete heldNFT[_addrOriginNftContract][_nftId];
         } else {
             //@TODO message NFT Contract to mint new one via interface.
@@ -226,6 +226,8 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
                 sisterContract[_addrOriginNftContract]
             );
 
+            emit bridgeSuccess(_addrOwner, _addrOriginNftContract, _nftId);
+            //@notice sister contract has to implement this func
             sisterContract.onBridgedNFTReceived(_nftId, _addrOwner);
         }
     }
