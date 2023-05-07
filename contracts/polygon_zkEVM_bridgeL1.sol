@@ -51,7 +51,7 @@ abstract contract WrappedNFT {
 }
 
 // Contract for open access NFT bridge
-contract openAccessNFTBridge is Ownable, IERC721Receiver {
+contract GalaxyBridge is Ownable, IERC721Receiver {
     using Counters for Counters.Counter;
 
     IPolygonBridgeContract polygonBridge;
@@ -226,8 +226,6 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
             emit bridgeSuccessHeld(_addrOwner, _addrOriginNftContract, _nftId);
             delete heldNFT[_addrOriginNftContract][_nftId];
         } else {
-            //@TODO message NFT Contract to mint new one via interface.
-
             ICrossChainNFTContract sisterContract = ICrossChainNFTContract(
                 sisterContract[_addrOriginNftContract]
             );
@@ -237,7 +235,8 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
                 _addrOriginNftContract,
                 _nftId
             );
-            //@notice sister contract has to implement this func
+            //@notice sister contract has to implement this function to do anything. Otherwise the NFT is lost
+            //@TODO message NFT Contract to mint new one via interface.
             sisterContract.onBridgedNFTReceived(_nftId, _addrOwner);
         }
     }
@@ -258,6 +257,15 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
 
     mapping(uint => bytes32) public sentPayload;
     uint public totalRequestsSent;
+
+    //@notice placeholder for beta testing. Will be stored via backend / subgraph.
+    function returnInitiatedBridgeRequests() external view returns (uint) {
+        for (uint i = 0; i < totalRequestsSent; i++) {
+            if (bridgeRequestInitiatorUser[i] == msg.sender) {
+                return i;
+            }
+        }
+    }
 
     //sending the message to the bridge with encoded data payload.
     function sendMessageToL2(address _to, bytes memory _calldata) internal {
@@ -284,6 +292,7 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
     // Bridge NFT to sister chain
     // @notice requires safeTransfer, normal transfer does not trigger onERC721 received
     //
+
     function onERC721Received(
         address operator,
         address from,
@@ -291,6 +300,12 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         bytes calldata data
     ) public override returns (bytes4) {
         address nftContractAddr = msg.sender;
+
+        //@notice cannot bridge nfts if its not supported on the other chain.
+        require(
+            sisterContract[nftContractAddr] != address(0),
+            "no sister contract specified!"
+        );
 
         bytes32 encodedData = encodeMessagePayload(
             nftContractAddr,
@@ -307,6 +322,7 @@ contract openAccessNFTBridge is Ownable, IERC721Receiver {
         totalRequestsSent++;
         heldNFT[nftContractAddr][tokenId] = true;
 
+        //@notice for subgraph, need to add request id
         emit bridgeRequestSent(from, msg.sender, tokenId);
 
         sendMessageToL2(currentSisterContract, abi.encodePacked(encodedData));

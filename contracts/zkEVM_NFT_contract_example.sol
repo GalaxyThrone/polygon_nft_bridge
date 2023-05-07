@@ -14,7 +14,11 @@ interface IBridgeMessageReceiver {
     ) external payable;
 }
 
-contract GalaxyBridge is ERC721URIStorage, Ownable, IBridgeMessageReceiver {
+contract nftExampleContractCrossChain is
+    ERC721URIStorage,
+    Ownable,
+    IBridgeMessageReceiver
+{
     using Counters for Counters.Counter;
 
     Counters.Counter private _tokenIdCounter;

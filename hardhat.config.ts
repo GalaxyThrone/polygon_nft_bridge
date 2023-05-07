@@ -19,6 +19,10 @@ const networks = {
     url: "https://rpc.sepolia.org",
     accounts: [process.env.PRIVATE_KEY],
   },
+  goerli: {
+    url: "https://rpc.ankr.com/eth_goerli",
+    accounts: [process.env.PRIVATE_KEY],
+  },
 };
 
 // Define the solidity compiler version and optimizer settings
