@@ -128,7 +128,7 @@ contract GalaxyBridge is Ownable, IERC721Receiver {
 
     // Add a new sister contract, requires msg.sender to be the nft contract
     function addSisterContract(address _newSisterContract) external {
-        sisterContract[_newSisterContract] = msg.sender;
+        sisterContract[msg.sender] = _newSisterContract;
     }
 
     // Add a sister contract via signature

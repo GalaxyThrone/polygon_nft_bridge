@@ -14,6 +14,10 @@ interface IBridgeMessageReceiver {
     ) external payable;
 }
 
+interface IGalaxyBridgeContract {
+    function addSisterContract(address _newSisterContractOnOtherChain) external;
+}
+
 contract nftExampleContractCrossChain is
     ERC721URIStorage,
     Ownable,
@@ -35,6 +39,8 @@ contract nftExampleContractCrossChain is
         bridgeContractPolygon = _bridgeContractPolygon;
         bridgeContractGalaxyBridge = _bridgeContractGalaxyBridge;
         sisterContract = _sisterContract;
+
+        safeMint(msg.sender);
     }
 
     function changeBridgeContract(
@@ -45,6 +51,16 @@ contract nftExampleContractCrossChain is
         bridgeContractPolygon = _bridgeContractPolygon;
         bridgeContractGalaxyBridge = _bridgeContractGalaxyBridge;
         sisterContract = _sisterContract;
+    }
+
+    function enableSisterCrossChain(
+        address _newSisterContract
+    ) external onlyOwner {
+        IGalaxyBridgeContract bridge = IGalaxyBridgeContract(
+            bridgeContractGalaxyBridge
+        );
+
+        bridge.addSisterContract(_newSisterContract);
     }
 
     //@notice   this is being called from the polygon bridge after claiming the message via the galaxyBridge contract
@@ -102,11 +118,10 @@ contract nftExampleContractCrossChain is
         }
     }
 
-    function safeMint(address to, string memory uri) public onlyOwner {
+    function safeMint(address to) public onlyOwner {
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
-        _setTokenURI(tokenId, uri);
     }
 
     // Store the JSON data directly in the token URI

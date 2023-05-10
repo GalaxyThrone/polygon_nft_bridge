@@ -521,8 +521,8 @@
       ]
     },
     "C:\\Users\\Enkidu\\Desktop\\GalaxyThrone\\bridge_mainnet\\polygon_nft_bridge\\contracts\\zkEVM_NFT_contract_example.sol": {
-      "lastModificationDate": 1683461586245,
-      "contentHash": "25329e27627f276e1ae9d860aa9ffdc5",
+      "lastModificationDate": 1683503018566,
+      "contentHash": "674b88c36389365e92f46a13367d182d",
       "sourceName": "contracts/zkEVM_NFT_contract_example.sol",
       "solcConfig": {
         "version": "0.8.9",
@@ -558,6 +558,7 @@
       ],
       "artifacts": [
         "IBridgeMessageReceiver",
+        "IGalaxyBridgeContract",
         "nftExampleContractCrossChain"
       ]
     }
